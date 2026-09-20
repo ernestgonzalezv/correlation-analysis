@@ -7,7 +7,13 @@ name = "correlation-analysis"
 version = "0.1.0"
 description = "Correlation structure, factor decomposition and effective bet counting"
 requires-python = ">=3.11"
-dependencies = ["numpy>=1.26", "pandas>=2.0", "pyarrow>=14", "scipy>=1.11"]
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "pyarrow>=14",
+    "scipy>=1.11",
+    "certifi>=2024.2.2",
+]
 
 [project.scripts]
 correlation-analysis = "correlation_analysis.cli:main"
