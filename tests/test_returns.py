@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eigenrisk.core.returns import (
+from correlation_analysis.core.returns import (
     log_returns,
     panel_from_pnl,
     panel_from_prices,

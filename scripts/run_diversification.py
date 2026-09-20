@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from eigenrisk import analyze, panel_from_pnl, print_report
-from eigenrisk.data.synthetic import block_correlation_matrix, synthetic_panel
+from correlation_analysis import analyze, panel_from_pnl, print_report
+from correlation_analysis.data.synthetic import block_correlation_matrix, synthetic_panel
 
 
 def instrument_example() -> None:

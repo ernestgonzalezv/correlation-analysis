@@ -4,7 +4,7 @@ from typing import Sequence
 
 import numpy as np
 
-from eigenrisk.core.panel import ReturnsPanel
+from correlation_analysis.core.panel import ReturnsPanel
 
 
 def log_returns(prices: np.ndarray) -> np.ndarray:

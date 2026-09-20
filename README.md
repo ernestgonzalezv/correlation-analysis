@@ -1,4 +1,4 @@
-# eigenrisk
+# correlation-analysis
 
 A research engine that answers one question:
 
@@ -20,7 +20,7 @@ That was never two bets. It was **one bet (short dollar) taken twice at double
 size**. The same trap applies to strategies: five systems that lose on the same
 day are not five systems.
 
-`eigenrisk` measures that, with a number.
+`correlation_analysis` measures that, with a number.
 
 ---
 
@@ -34,7 +34,7 @@ python3 -m venv .venv
 
 ```python
 import numpy as np
-from eigenrisk import analyze, panel_from_prices, panel_from_pnl, print_report
+from correlation_analysis import analyze, panel_from_prices, panel_from_pnl, print_report
 
 panel = panel_from_prices(prices, names=["EURUSD", "GBPUSD", "XAUUSD"], freq="1d")
 print_report(analyze(panel))
@@ -80,16 +80,16 @@ hand.
 ## Architecture
 
 ```
-adapters (eigenrisk/data)     I/O, network, disk. Fails, retries, caches.
+adapters (correlation_analysis/data)     I/O, network, disk. Fails, retries, caches.
         │  produces ReturnsPanel
         v
-core (eigenrisk/core)         Pure mathematics. Zero I/O. Deterministic.
+core (correlation_analysis/core)         Pure mathematics. Zero I/O. Deterministic.
         │  produces numbers
         v
-research (eigenrisk/research) Orchestrates core to answer a question.
+research (correlation_analysis/research) Orchestrates core to answer a question.
         │  produces a report
         v
-report (eigenrisk/report)     Presentation only. Never computes.
+report (correlation_analysis/report)     Presentation only. Never computes.
 ```
 
 **The rule that holds it together: `core/` imports nothing from `data/`.**

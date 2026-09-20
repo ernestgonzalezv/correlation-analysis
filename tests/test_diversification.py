@@ -1,15 +1,15 @@
 import numpy as np
 import pytest
 
-from eigenrisk import analyze, panel_from_pnl
-from eigenrisk.core.panel import ReturnsPanel
-from eigenrisk.data.synthetic import (
+from correlation_analysis import analyze, panel_from_pnl
+from correlation_analysis.core.panel import ReturnsPanel
+from correlation_analysis.data.synthetic import (
     block_correlation_matrix,
     equicorrelation_matrix,
     independent_panel,
     synthetic_panel,
 )
-from eigenrisk.report.console import render
+from correlation_analysis.report.console import render
 
 
 @pytest.fixture
