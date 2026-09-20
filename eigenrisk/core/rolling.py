@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from quantlab.core.covariance import correlation_matrix
-from quantlab.core.panel import ReturnsPanel
+from eigenrisk.core.covariance import correlation_matrix
+from eigenrisk.core.panel import ReturnsPanel
 
 
 @dataclass(frozen=True)

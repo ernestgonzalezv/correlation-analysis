@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "quantlab"
+name = "eigenrisk"
 version = "0.1.0"
 description = "Laboratorio de investigacion cuantitativa"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ dependencies = ["numpy>=1.26", "pandas>=2.0", "pyarrow>=14"]
 dev = ["pytest>=8"]
 
 [tool.setuptools.packages.find]
-include = ["quantlab*"]
+include = ["eigenrisk*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

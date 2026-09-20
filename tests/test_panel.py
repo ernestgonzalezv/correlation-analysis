@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from quantlab.core.panel import PERIODS_PER_YEAR, ReturnsPanel
+from eigenrisk.core.panel import PERIODS_PER_YEAR, ReturnsPanel
 
 
 @pytest.fixture

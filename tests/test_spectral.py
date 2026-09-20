@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from quantlab.core.covariance import correlation_matrix
-from quantlab.core.spectral import decompose, effective_bets
-from quantlab.data.synthetic import (
+from eigenrisk.core.covariance import correlation_matrix
+from eigenrisk.core.spectral import decompose, effective_bets
+from eigenrisk.data.synthetic import (
     block_correlation_matrix,
     equicorrelation_matrix,
     synthetic_panel,
