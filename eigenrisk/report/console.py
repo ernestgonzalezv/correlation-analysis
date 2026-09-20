@@ -40,7 +40,8 @@ def render(report: DiversificationReport) -> str:
     lines.append(f"obs per series {panel.observation_ratio:.1f}")
     lines.append("")
 
-    lines += _header("annualized volatility")
+    volatility_units = "currency" if panel.kind == "pnl" else "return"
+    lines += _header(f"annualized volatility ({volatility_units} units)")
     for name, vol in zip(panel.names, report.annualized_volatility):
         lines.append(f"{name[:NAME_WIDTH - 1]:<{NAME_WIDTH}} {vol:>10.4f}")
     lines.append("")
@@ -90,6 +91,14 @@ def render(report: DiversificationReport) -> str:
         )
         lines.append(f"factors above the ceiling        {report.signal_factors}")
         lines.append("")
+        lines.append(
+            "the bound assumes independent, identically distributed observations;"
+        )
+        lines.append(
+            "fat tails and volatility clustering widen the true band, so treat a"
+        )
+        lines.append("verdict near the ceiling as undecided rather than settled")
+        lines.append("")
 
     lines += _header("diversification")
     lines.append(f"series held              {panel.N}")
@@ -107,6 +116,11 @@ def render(report: DiversificationReport) -> str:
         lines.append(f"range             {rolling.spread:.4f}")
         lines.append("")
 
+    if report.rolling is None and report.rolling_skipped is not None:
+        lines += _header("correlation through time")
+        lines.append(f"skipped: {report.rolling_skipped}")
+        lines.append("")
+
     if report.stress_correlation is not None:
         lines += _header("correlation under stress")
         lines.append(f"worst observations used   {report.stress_observations}")
@@ -115,6 +129,11 @@ def render(report: DiversificationReport) -> str:
             f"{np.mean(report.stress_correlation[np.triu_indices(panel.N, k=1)]):+.4f}"
         )
         lines.append(f"lift versus full sample   {report.stress_lift:+.4f}")
+        lines.append("")
+
+    if report.stress_correlation is None and report.stress_skipped is not None:
+        lines += _header("correlation under stress")
+        lines.append(f"skipped: {report.stress_skipped}")
         lines.append("")
 
     if report.warnings:

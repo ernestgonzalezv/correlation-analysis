@@ -13,6 +13,7 @@ Z_SCORES: dict[float, float] = {
 }
 
 MIN_OBSERVATION_RATIO = 10.0
+MAX_ABS_CORRELATION = 1.0 - 1e-9
 
 
 @dataclass(frozen=True)
@@ -51,12 +52,23 @@ def count_signal_factors(eigenvalues: np.ndarray, n_obs: int, n_series: int) -> 
     return int(signal_mask(eigenvalues, n_obs, n_series).sum())
 
 
-def correlation_stderr(correlation: np.ndarray, n_obs: int) -> np.ndarray:
+def fisher_z_stderr(n_obs: int) -> float:
     if n_obs <= 3:
         raise ValueError(f"n_obs must be greater than 3; got {n_obs}")
 
+    return float(1.0 / np.sqrt(n_obs - 3))
+
+
+def correlation_stderr(correlation: np.ndarray, n_obs: int) -> np.ndarray:
+    if n_obs <= 1:
+        raise ValueError(f"n_obs must be greater than 1; got {n_obs}")
+
     correlation = np.asarray(correlation, dtype=float)
-    return np.full_like(correlation, 1.0 / np.sqrt(n_obs - 3))
+    return (1.0 - correlation**2) / np.sqrt(n_obs - 1)
+
+
+def _is_square_matrix(array: np.ndarray) -> bool:
+    return array.ndim == 2 and array.shape[0] == array.shape[1]
 
 
 def correlation_interval(
@@ -67,15 +79,21 @@ def correlation_interval(
             f"unsupported confidence level {level}; available: {sorted(Z_SCORES)}"
         )
 
-    if n_obs <= 3:
-        raise ValueError(f"n_obs must be greater than 3; got {n_obs}")
+    correlation = np.asarray(correlation, dtype=float)
+    bounded = np.clip(correlation, -MAX_ABS_CORRELATION, MAX_ABS_CORRELATION)
 
-    correlation = np.clip(np.asarray(correlation, dtype=float), -0.999999, 0.999999)
+    z = np.arctanh(bounded)
+    margin = Z_SCORES[level] * fisher_z_stderr(n_obs)
 
-    z = np.arctanh(correlation)
-    margin = Z_SCORES[level] / np.sqrt(n_obs - 3)
+    low = np.tanh(z - margin)
+    high = np.tanh(z + margin)
 
-    return np.tanh(z - margin), np.tanh(z + margin)
+    if _is_square_matrix(correlation):
+        diagonal = np.diag_indices_from(correlation)
+        low[diagonal] = correlation[diagonal]
+        high[diagonal] = correlation[diagonal]
+
+    return low, high
 
 
 def is_estimate_reliable(

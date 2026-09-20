@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+NEGATIVE_EIGENVALUE_TOLERANCE = 1e-8
+
 
 @dataclass(frozen=True)
 class SpectralResult:
@@ -66,6 +68,14 @@ def decompose(matrix: np.ndarray) -> SpectralResult:
     order = np.argsort(eigenvalues)[::-1]
     eigenvalues = eigenvalues[order]
     eigenvectors = eigenvectors[:, order]
+
+    smallest = float(eigenvalues.min())
+    if smallest < -NEGATIVE_EIGENVALUE_TOLERANCE:
+        raise ValueError(
+            f"matrix is not positive semi-definite; smallest eigenvalue is "
+            f"{smallest:.3e}, beyond the {-NEGATIVE_EIGENVALUE_TOLERANCE:.0e} "
+            "tolerance for floating point error"
+        )
 
     eigenvalues = np.clip(eigenvalues, 0.0, None)
 

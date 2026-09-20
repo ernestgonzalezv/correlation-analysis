@@ -242,6 +242,17 @@ A correlation of 0.15 measured over three months could easily be 0.39. Sizing
 two strategies as independent on that basis is how accounts die. Reporting
 `0.15000` with five decimals and no interval is false precision.
 
+Two standard errors are exposed because they live on different scales and are
+routinely confused:
+
+```
+fisher_z_stderr(T)          = 1 / sqrt(T - 3)          scale of arctanh(r)
+correlation_stderr(r, T)    = (1 - r^2) / sqrt(T - 1)  scale of r itself
+```
+
+Intervals are built on the Fisher scale, because the sampling distribution of
+`r` is skewed near the boundaries while `arctanh(r)` is approximately normal.
+
 ### 7. Correlation is a film, not a number
 
 Correlation moves, and it rises exactly when it hurts. Two strategies averaging
@@ -250,6 +261,39 @@ account.
 
 The engine therefore reports a rolling window and a **stress correlation**
 computed only over the worst days of the sample, plus the lift between them.
+
+Stress days are ranked on a **standardized** equal-weight composite. Ranking on
+raw values would let the single largest-scale series decide which days count as
+bad, which matters most for PnL panels where one strategy trades far bigger size
+than another.
+
+The rolling statistic is computed from running sums in `O(T * N^2)` rather than
+by recomputing a correlation matrix per window, so intraday sample sizes remain
+tractable. The test suite pins it against a naive per-window reference.
+
+---
+
+## Known limitations
+
+These are properties of the method, not defects to be fixed later. They are
+documented because a number presented without its assumptions invites
+overconfidence.
+
+- **Marchenko-Pastur assumes independent, identically distributed observations.**
+  Financial returns are fat-tailed and volatility-clustered, so the real noise
+  band is wider than the bound suggests. An eigenvalue sitting just above the
+  ceiling is undecided, not confirmed.
+- **Correlation is linear.** Two series can be strongly dependent and still
+  measure near zero if the relationship is non-monotonic. A low reading is
+  evidence against a linear relationship only.
+- **Rolling windows overlap**, so consecutive readings are autocorrelated. The
+  reported range is informative; the standard deviation of the rolling series is
+  not a valid independent-sample statistic.
+- **The stress window is small by construction.** A 10% tail of 1,200
+  observations leaves 120 rows, so the stress correlation carries wide error
+  bars of its own.
+- **Correlation is not causation and not stability.** Every number here is an
+  in-sample description. It constrains sizing decisions; it does not forecast.
 
 ---
 
@@ -317,6 +361,7 @@ core/
   spectral.py       eigendecomposition, effective bets    done
   noise.py          Marchenko-Pastur, Fisher intervals    done
   rolling.py        rolling and stress correlation        done
+  panel.py          canonical format and validation       done
   stationarity.py   ADF, cointegration
   timeseries.py     ARMA/GARCH, Ornstein-Uhlenbeck
   sizing.py         Kelly, volatility targeting

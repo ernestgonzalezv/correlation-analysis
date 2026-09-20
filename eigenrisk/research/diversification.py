@@ -38,9 +38,11 @@ class DiversificationReport:
     signal_factors: int | None
     estimate_is_reliable: bool
     rolling: RollingCorrelation | None
+    rolling_skipped: str | None
     stress_correlation: np.ndarray | None
     stress_observations: int | None
     stress_lift: float | None
+    stress_skipped: str | None
 
     @property
     def effective_bets(self) -> float:
@@ -73,6 +75,12 @@ class DiversificationReport:
                 f"{self.panel.N} series behave like {self.effective_bets:.2f} "
                 "independent bets; exposure is more concentrated than it looks"
             )
+
+        if self.stress_skipped is not None:
+            messages.append(f"stress analysis skipped: {self.stress_skipped}")
+
+        if self.rolling_skipped is not None:
+            messages.append(f"rolling analysis skipped: {self.rolling_skipped}")
 
         if self.stress_lift is not None and self.stress_lift > 0.15:
             messages.append(
@@ -110,17 +118,26 @@ def analyze(
     resolved_window = window if window is not None else _choose_window(panel.T)
 
     rolling = None
-    if resolved_window is not None and panel.N >= 2:
+    rolling_skipped = None
+
+    if panel.N < 2:
+        rolling_skipped = "a rolling correlation needs at least 2 series"
+    elif resolved_window is None:
+        rolling_skipped = f"{panel.T} observations are too few for any window"
+    else:
         try:
             rolling = rolling_mean_correlation(panel, resolved_window)
-        except ValueError:
-            rolling = None
+        except ValueError as exc:
+            rolling_skipped = str(exc)
 
     stress_corr = None
     stress_observations = None
     stress_lift = None
+    stress_skipped = None
 
-    if panel.N >= 2:
+    if panel.N < 2:
+        stress_skipped = "a stress correlation needs at least 2 series"
+    else:
         try:
             stress_corr, stress_observations = stress_correlation(
                 panel, stress_quantile
@@ -128,8 +145,8 @@ def analyze(
             stress_lift = mean_pairwise_correlation(
                 stress_corr
             ) - mean_pairwise_correlation(correlation)
-        except ValueError:
-            pass
+        except ValueError as exc:
+            stress_skipped = str(exc)
 
     return DiversificationReport(
         panel=panel,
@@ -143,7 +160,9 @@ def analyze(
         signal_factors=signal_factors,
         estimate_is_reliable=is_estimate_reliable(panel.T, panel.N),
         rolling=rolling,
+        rolling_skipped=rolling_skipped,
         stress_correlation=stress_corr,
         stress_observations=stress_observations,
         stress_lift=stress_lift,
+        stress_skipped=stress_skipped,
     )
