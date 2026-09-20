@@ -20,3 +20,9 @@ data/processed/
 # IDEs
 .idea/
 .vscode/
+
+# generated data
+fred_daily.csv
+trading_d1.csv
+majors_d1.csv
+example.csv

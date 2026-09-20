@@ -94,6 +94,92 @@ report = analyze(panel)
 
 ---
 
+## Data
+
+Three ingestion paths, all producing the same `ReturnsPanel`.
+
+### Any CSV or Parquet file
+
+One column per series, one row per bar. Non-numeric columns are dropped and
+reported; rows with missing values are removed on a complete-case basis and the
+count is printed, rather than being filled silently.
+
+```bash
+correlation-analysis prices.csv --index-column date --freq 1d
+```
+
+### St. Louis Fed (FRED)
+
+Daily series, no API key, history back to 1999 for the major currencies.
+
+```bash
+python scripts/fetch_fred_data.py fred_daily.csv --start 2015-01-01
+python scripts/fetch_fred_data.py --list --universe fx
+correlation-analysis fred_daily.csv --index-column date
+```
+
+Quote conventions are normalised on the way in, so every FX column reads as long
+the foreign currency against the dollar. Without this, `USDJPY` and `EURUSD`
+appear negatively correlated purely because the dollar sits on opposite sides of
+the quote, and the loadings of the dominant factor become unreadable.
+
+### A directory of per-symbol bar files
+
+The layout most terminal exports produce: one file per instrument, each with a
+date column and OHLC columns.
+
+```python
+from correlation_analysis.data.bars import coverage, load_symbol_frame
+
+for row in coverage("bars/d1"):
+    print(row.symbol, row.rows, row.first.date(), row.last.date())
+
+frame = load_symbol_frame("bars/d1", symbols=["EURUSD", "GBPUSD"], start="2018-01-01")
+```
+
+Run `coverage` before building a panel. Symbols whose history ends early will
+silently truncate a complete-case join: in one 57-symbol archive, two delisted
+crosses reduced a 3,808-day sample to 437 days, pushing the observation ratio
+below the reliability threshold.
+
+---
+
+## Worked example
+
+Eight instruments, daily bars, 2018 to 2026:
+
+```
+CORRELATION
+                EURUSD    GBPUSD    USDJPY    USDCHF    AUDUSD    USDCAD    XAUUSD    XAGUSD
+EURUSD           1.000     0.704    -0.475    -0.767     0.629    -0.516     0.386     0.328
+USDCHF          -0.767    -0.558     0.578     1.000    -0.486     0.404    -0.414    -0.299
+AUDUSD           0.629     0.657    -0.331    -0.486     1.000    -0.713     0.427     0.449
+XAUUSD           0.386     0.352    -0.365    -0.414     0.427    -0.307     1.000     0.770
+
+FACTOR STRUCTURE
+factor        eigenvalue   explained   cumulative       verdict
+1                 4.2875      53.6%        53.6%        signal
+2                 1.1960      15.0%        68.5%        signal
+3                 1.0118      12.6%        81.2%         noise
+
+Marchenko-Pastur noise ceiling   1.1264
+
+DIVERSIFICATION
+series held              8
+effective bets           2.998
+diversification ratio    37.5%
+
+WARNINGS
+- 8 series behave like 3.00 independent bets; exposure is more
+  concentrated than the position count suggests
+```
+
+Two factors carry the panel: a dollar factor and a precious-metals factor.
+Gold and silver at 0.770, and the commodity currencies at -0.713 across
+opposite quote conventions, are the same exposure entered twice.
+
+---
+
 ## Design
 
 All producers emit a single canonical structure, and all consumers read it:
@@ -112,8 +198,18 @@ annualisation convention is fixed once rather than at each call site; a custom
 calendar is supplied with `periods_per_year`.
 
 ```
-data/       adapters, I/O, synthetic generators
+data/       adapters and generators
+  loaders.py    generic CSV and Parquet
+  fred.py       St. Louis Fed daily series
+  bars.py       per-symbol OHLC directories
+  synthetic.py  known-answer generator used by the tests
 core/       pure mathematics, no I/O, deterministic
+  panel.py      the canonical structure and its validation
+  returns.py    price to return conversion
+  covariance.py centring, covariance, correlation
+  spectral.py   eigendecomposition and effective bets
+  noise.py      Marchenko-Pastur bounds and Fisher intervals
+  rolling.py    rolling and stress correlation
 research/   orchestration into a report
 report/     rendering
 cli.py      command line entry point
@@ -340,6 +436,12 @@ Meucci, A. (2009). *Managing diversification.* Risk 22(5), 74-79.
 Plerou, V., Gopikrishnan, P., Rosenow, B., Amaral, L. A. N., Guhr, T. and
 Stanley, H. E. (2002). *Random matrix approach to cross correlations in
 financial data.* Physical Review E 65, 066126.
+
+---
+
+## License
+
+MIT. See `LICENSE`.
 
 ---
 
