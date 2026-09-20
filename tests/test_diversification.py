@@ -167,3 +167,34 @@ def test_render_lists_every_series_name(report):
 def test_render_handles_a_report_without_warnings():
     text = render(analyze(independent_panel(n_obs=5_000, n_series=4, seed=49)))
     assert "WARNINGS" not in text
+
+
+def test_skips_are_reported_not_swallowed():
+    panel = synthetic_panel(equicorrelation_matrix(4, rho=0.3), n_obs=25, seed=51)
+    report = analyze(panel, stress_quantile=0.05)
+
+    assert report.stress_correlation is None
+    assert report.stress_skipped is not None
+    assert any("stress analysis skipped" in w for w in report.warnings)
+
+
+def test_skip_reason_reaches_the_rendered_report():
+    panel = synthetic_panel(equicorrelation_matrix(4, rho=0.3), n_obs=25, seed=52)
+    text = render(analyze(panel, stress_quantile=0.05))
+    assert "skipped:" in text
+
+
+def test_successful_analysis_records_no_skips(report):
+    assert report.rolling_skipped is None
+    assert report.stress_skipped is None
+
+
+def test_marchenko_pastur_caveat_is_shown(report):
+    assert "independent, identically distributed" in render(report)
+
+
+def test_volatility_units_follow_the_panel_kind():
+    rng = np.random.default_rng(53)
+    pnl = panel_from_pnl(rng.normal(loc=10.0, scale=200.0, size=(600, 3)), ["A", "B", "C"])
+    assert "CURRENCY UNITS" in render(analyze(pnl))
+    assert "RETURN UNITS" in render(analyze(independent_panel(600, 3, seed=54)))

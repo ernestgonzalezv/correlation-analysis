@@ -134,3 +134,15 @@ def test_decompose_rejects_nan():
 def test_effective_bets_rejects_non_positive_sum():
     with pytest.raises(ValueError, match="positive"):
         effective_bets(np.zeros(4))
+
+
+def test_decompose_rejects_a_non_positive_semi_definite_matrix():
+    matrix = np.array([[1.0, 2.0], [2.0, 1.0]])
+    with pytest.raises(ValueError, match="not positive semi-definite"):
+        decompose(matrix)
+
+
+def test_decompose_tolerates_floating_point_negative_eigenvalues():
+    corr = equicorrelation_matrix(4, rho=0.999999)
+    result = decompose(corr)
+    assert result.eigenvalues.min() >= 0.0

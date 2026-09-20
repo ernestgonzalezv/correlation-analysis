@@ -34,6 +34,14 @@ def block_correlation_matrix(
         start = end
 
     np.fill_diagonal(matrix, 1.0)
+
+    smallest = float(np.linalg.eigvalsh(matrix).min())
+    if smallest <= 0.0:
+        raise ValueError(
+            f"the requested block structure is not positive definite "
+            f"(smallest eigenvalue {smallest:.3e}); lower within or raise between"
+        )
+
     return matrix
 
 

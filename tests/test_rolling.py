@@ -84,8 +84,30 @@ def test_stress_mask_selects_the_requested_fraction(panel):
 
 def test_stress_mask_selects_the_worst_days(panel):
     mask = stress_mask(panel, quantile=0.10)
-    portfolio = panel.values.mean(axis=1)
+    values = panel.values
+    standardized = (values - values.mean(axis=0)) / values.std(axis=0, ddof=1)
+    portfolio = standardized.mean(axis=1)
     assert portfolio[mask].max() <= portfolio[~mask].min()
+
+
+def test_stress_mask_is_scale_invariant():
+    rng = np.random.default_rng(61)
+    base = rng.normal(size=(400, 3))
+    original = ReturnsPanel(base, ("A", "B", "C"))
+
+    rescaled_values = base.copy()
+    rescaled_values[:, 0] *= 1_000.0
+    rescaled = ReturnsPanel(rescaled_values, ("A", "B", "C"))
+
+    assert np.array_equal(stress_mask(original), stress_mask(rescaled))
+
+
+def test_stress_mask_rejects_constant_series():
+    values = np.column_stack(
+        [np.random.default_rng(62).normal(size=200), np.ones(200)]
+    )
+    with pytest.raises(ValueError, match="constant"):
+        stress_mask(ReturnsPanel(values, ("A", "FLAT")))
 
 
 def test_stress_mask_rejects_invalid_quantile(panel):
@@ -120,3 +142,75 @@ def test_stress_lift_is_positive_when_a_crash_is_injected():
     panel = ReturnsPanel(values, ("A", "B", "C", "D"))
 
     assert correlation_lift_under_stress(panel, quantile=0.07) > 0.2
+
+
+def _naive_rolling_mean_correlation(panel, window):
+    output = []
+    for end in range(window, panel.T + 1):
+        block = panel.values[end - window : end]
+        output.append(mean_pairwise_correlation(np.corrcoef(block, rowvar=False)))
+    return np.array(output)
+
+
+def test_vectorized_rolling_matches_naive_reference(panel):
+    result = rolling_mean_correlation(panel, window=120)
+    expected = _naive_rolling_mean_correlation(panel, window=120)
+    assert np.allclose(result.values, expected, atol=1e-10)
+
+
+def test_vectorized_rolling_matches_naive_on_a_small_window(panel):
+    result = rolling_mean_correlation(panel, window=5)
+    expected = _naive_rolling_mean_correlation(panel, window=5)
+    assert np.allclose(result.values, expected, atol=1e-9)
+
+
+def test_vectorized_rolling_matches_naive_on_skewed_scales():
+    rng = np.random.default_rng(71)
+    values = rng.normal(size=(300, 3))
+    values[:, 0] *= 1e-4
+    values[:, 2] *= 1e4
+    panel = ReturnsPanel(values, ("tiny", "mid", "huge"))
+
+    result = rolling_mean_correlation(panel, window=50)
+    expected = _naive_rolling_mean_correlation(panel, window=50)
+    assert np.allclose(result.values, expected, atol=1e-8)
+
+
+def test_rolling_stays_within_correlation_bounds(panel):
+    result = rolling_mean_correlation(panel, window=40)
+    assert result.values.min() >= -1.0
+    assert result.values.max() <= 1.0
+
+
+def test_rolling_scales_to_intraday_sample_sizes():
+    panel = synthetic_panel(equicorrelation_matrix(6, rho=0.3), n_obs=60_000, seed=72)
+    result = rolling_mean_correlation(panel, window=5_000)
+    assert result.n_windows == 60_000 - 5_000 + 1
+
+
+def test_rolling_carries_index_labels():
+    values = synthetic_panel(
+        equicorrelation_matrix(3, rho=0.2), n_obs=100, seed=73
+    ).values
+    dates = np.arange(100)
+    panel = ReturnsPanel(values, ("A", "B", "C"), index=dates)
+
+    result = rolling_mean_correlation(panel, window=20)
+
+    assert result.labels is not None
+    assert result.labels[0] == 19
+    assert result.labels[-1] == 99
+
+
+def test_rolling_labels_are_absent_without_an_index(panel):
+    assert rolling_mean_correlation(panel, window=50).labels is None
+
+
+def test_rolling_rejects_series_constant_inside_a_window():
+    rng = np.random.default_rng(74)
+    values = rng.normal(size=(200, 2))
+    values[50:120, 1] = 0.5
+    panel = ReturnsPanel(values, ("A", "STUCK"))
+
+    with pytest.raises(ValueError, match="constant inside at least one window"):
+        rolling_mean_correlation(panel, window=40)

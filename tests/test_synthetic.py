@@ -99,3 +99,18 @@ def test_independent_panel_is_near_identity():
 def test_default_names_are_generated():
     panel = synthetic_panel(np.eye(3), n_obs=100, seed=1)
     assert panel.names == ("S0", "S1", "S2")
+
+
+def test_block_matrix_rejects_between_stronger_than_within():
+    with pytest.raises(ValueError, match="not positive definite"):
+        block_correlation_matrix([2, 2], within=0.2, between=0.9)
+
+
+def test_block_matrix_rejects_negative_within_with_positive_between():
+    with pytest.raises(ValueError, match="not positive definite"):
+        block_correlation_matrix([2, 2, 2], within=-0.4, between=0.8)
+
+
+def test_block_matrix_accepts_a_valid_request():
+    matrix = block_correlation_matrix([3, 3], within=0.9, between=0.2)
+    assert np.linalg.eigvalsh(matrix).min() > 0
