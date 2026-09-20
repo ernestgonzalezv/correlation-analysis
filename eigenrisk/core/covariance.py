@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from quantlab.core.panel import ReturnsPanel
+from eigenrisk.core.panel import ReturnsPanel
 
 VARIANCE_TOLERANCE = 1e-14
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from quantlab.research.diversification import DiversificationReport
+from eigenrisk.research.diversification import DiversificationReport
 
 WIDTH = 78
 NAME_WIDTH = 12

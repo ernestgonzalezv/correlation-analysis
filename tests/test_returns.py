@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from quantlab.core.returns import (
+from eigenrisk.core.returns import (
     log_returns,
     panel_from_pnl,
     panel_from_prices,

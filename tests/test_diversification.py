@@ -1,15 +1,15 @@
 import numpy as np
 import pytest
 
-from quantlab import analyze, panel_from_pnl
-from quantlab.core.panel import ReturnsPanel
-from quantlab.data.synthetic import (
+from eigenrisk import analyze, panel_from_pnl
+from eigenrisk.core.panel import ReturnsPanel
+from eigenrisk.data.synthetic import (
     block_correlation_matrix,
     equicorrelation_matrix,
     independent_panel,
     synthetic_panel,
 )
-from quantlab.report.console import render
+from eigenrisk.report.console import render
 
 
 @pytest.fixture

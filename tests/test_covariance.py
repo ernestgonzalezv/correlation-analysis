@@ -1,14 +1,14 @@
 import numpy as np
 import pytest
 
-from quantlab.core.covariance import (
+from eigenrisk.core.covariance import (
     center,
     correlation_matrix,
     covariance_matrix,
     volatilities,
 )
-from quantlab.core.panel import ReturnsPanel
-from quantlab.data.synthetic import equicorrelation_matrix, synthetic_panel
+from eigenrisk.core.panel import ReturnsPanel
+from eigenrisk.data.synthetic import equicorrelation_matrix, synthetic_panel
 
 
 @pytest.fixture

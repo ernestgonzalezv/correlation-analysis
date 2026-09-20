@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from quantlab.core.covariance import correlation_matrix
-from quantlab.core.noise import (
+from eigenrisk.core.covariance import correlation_matrix
+from eigenrisk.core.noise import (
     correlation_interval,
     correlation_stderr,
     count_signal_factors,
@@ -10,8 +10,8 @@ from quantlab.core.noise import (
     marchenko_pastur_bounds,
     signal_mask,
 )
-from quantlab.core.spectral import decompose
-from quantlab.data.synthetic import (
+from eigenrisk.core.spectral import decompose
+from eigenrisk.data.synthetic import (
     equicorrelation_matrix,
     independent_panel,
     synthetic_panel,

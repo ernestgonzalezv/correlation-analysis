@@ -4,22 +4,22 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from quantlab.core.covariance import correlation_matrix, volatilities
-from quantlab.core.noise import (
+from eigenrisk.core.covariance import correlation_matrix, volatilities
+from eigenrisk.core.noise import (
     NoiseBounds,
     correlation_interval,
     count_signal_factors,
     is_estimate_reliable,
     marchenko_pastur_bounds,
 )
-from quantlab.core.panel import ReturnsPanel
-from quantlab.core.rolling import (
+from eigenrisk.core.panel import ReturnsPanel
+from eigenrisk.core.rolling import (
     RollingCorrelation,
     mean_pairwise_correlation,
     rolling_mean_correlation,
     stress_correlation,
 )
-from quantlab.core.spectral import SpectralResult, decompose
+from eigenrisk.core.spectral import SpectralResult, decompose
 
 DEFAULT_STRESS_QUANTILE = 0.10
 MIN_ROLLING_WINDOW = 20
