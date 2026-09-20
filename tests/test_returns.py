@@ -9,8 +9,6 @@ from correlation_analysis.core.returns import (
 )
 
 
-
-
 def test_log_return_known_value():
     prices = np.array([[100.0], [102.0]])
     assert log_returns(prices)[0, 0] == pytest.approx(np.log(1.02))

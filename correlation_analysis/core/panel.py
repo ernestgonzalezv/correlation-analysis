@@ -1,20 +1,34 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Sequence
 
 import numpy as np
 
+TRADING_DAYS_PER_YEAR = 252
+TRADING_HOURS_PER_DAY = 24
+MINUTES_PER_HOUR = 60
+WEEKS_PER_YEAR = 52
+MONTHS_PER_YEAR = 12
+
+MINUTES_PER_TRADING_DAY = TRADING_HOURS_PER_DAY * MINUTES_PER_HOUR
+
+BAR_MINUTES: dict[str, int] = {
+    "1m": 1,
+    "5m": 5,
+    "15m": 15,
+    "30m": 30,
+    "1h": 60,
+    "4h": 240,
+}
+
 PERIODS_PER_YEAR: dict[str, float] = {
-    "1m": 252 * 1440,
-    "5m": 252 * 288,
-    "15m": 252 * 96,
-    "30m": 252 * 48,
-    "1h": 252 * 24,
-    "4h": 252 * 6,
-    "1d": 252,
-    "1w": 52,
-    "1mo": 12,
+    label: TRADING_DAYS_PER_YEAR * MINUTES_PER_TRADING_DAY / minutes
+    for label, minutes in BAR_MINUTES.items()
+} | {
+    "1d": float(TRADING_DAYS_PER_YEAR),
+    "1w": float(WEEKS_PER_YEAR),
+    "1mo": float(MONTHS_PER_YEAR),
 }
 
 VALID_KINDS = ("returns", "pnl")
@@ -27,6 +41,7 @@ class ReturnsPanel:
     freq: str = "1d"
     kind: str = "returns"
     index: np.ndarray | None = None
+    periods_per_year: float | None = None
 
     def __post_init__(self) -> None:
         values = np.asarray(self.values, dtype=float)
@@ -51,9 +66,19 @@ class ReturnsPanel:
         if len(set(self.names)) != len(self.names):
             raise ValueError(f"duplicate names are not allowed: {self.names}")
 
-        if self.freq not in PERIODS_PER_YEAR:
+        if self.periods_per_year is None:
+            if self.freq not in PERIODS_PER_YEAR:
+                raise ValueError(
+                    f"unknown freq '{self.freq}'; either use one of "
+                    f"{sorted(PERIODS_PER_YEAR)} or pass periods_per_year "
+                    "explicitly for a custom calendar"
+                )
+            object.__setattr__(
+                self, "periods_per_year", PERIODS_PER_YEAR[self.freq]
+            )
+        elif self.periods_per_year <= 0:
             raise ValueError(
-                f"unknown freq '{self.freq}'; valid: {sorted(PERIODS_PER_YEAR)}"
+                f"periods_per_year must be positive; got {self.periods_per_year}"
             )
 
         if self.kind not in VALID_KINDS:
@@ -83,14 +108,10 @@ class ReturnsPanel:
         return self.values.shape[1]
 
     @property
-    def periods_per_year(self) -> float:
-        return PERIODS_PER_YEAR[self.freq]
-
-    @property
     def observation_ratio(self) -> float:
         return self.T / self.N
 
-    def select(self, names: Sequence[str]) -> "ReturnsPanel":
+    def select(self, names: Sequence[str]) -> ReturnsPanel:
         missing = [n for n in names if n not in self.names]
         if missing:
             raise KeyError(f"columns not found: {missing}")
@@ -98,7 +119,7 @@ class ReturnsPanel:
         idx = [self.names.index(n) for n in names]
         return replace(self, values=self.values[:, idx], names=tuple(names))
 
-    def slice_rows(self, mask: np.ndarray) -> "ReturnsPanel":
+    def slice_rows(self, mask: np.ndarray) -> ReturnsPanel:
         mask = np.asarray(mask, dtype=bool)
         if mask.shape != (self.T,):
             raise ValueError(f"mask must have shape ({self.T},); got {mask.shape}")

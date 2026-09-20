@@ -3,15 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.stats import norm
 
-Z_SCORES: dict[float, float] = {
-    0.80: 1.281552,
-    0.90: 1.644854,
-    0.95: 1.959964,
-    0.98: 2.326348,
-    0.99: 2.575829,
-}
-
+DEFAULT_CONFIDENCE_LEVEL = 0.95
 MIN_OBSERVATION_RATIO = 10.0
 MAX_ABS_CORRELATION = 1.0 - 1e-9
 
@@ -67,23 +61,28 @@ def correlation_stderr(correlation: np.ndarray, n_obs: int) -> np.ndarray:
     return (1.0 - correlation**2) / np.sqrt(n_obs - 1)
 
 
+def two_sided_z_score(level: float) -> float:
+    if not 0.0 < level < 1.0:
+        raise ValueError(f"confidence level must lie in (0, 1); got {level}")
+
+    return float(norm.ppf(0.5 + level / 2.0))
+
+
 def _is_square_matrix(array: np.ndarray) -> bool:
     return array.ndim == 2 and array.shape[0] == array.shape[1]
 
 
 def correlation_interval(
-    correlation: np.ndarray, n_obs: int, level: float = 0.95
+    correlation: np.ndarray,
+    n_obs: int,
+    level: float = DEFAULT_CONFIDENCE_LEVEL,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if level not in Z_SCORES:
-        raise ValueError(
-            f"unsupported confidence level {level}; available: {sorted(Z_SCORES)}"
-        )
+    margin = two_sided_z_score(level) * fisher_z_stderr(n_obs)
 
     correlation = np.asarray(correlation, dtype=float)
     bounded = np.clip(correlation, -MAX_ABS_CORRELATION, MAX_ABS_CORRELATION)
 
     z = np.arctanh(bounded)
-    margin = Z_SCORES[level] * fisher_z_stderr(n_obs)
 
     low = np.tanh(z - margin)
     high = np.tanh(z + margin)
