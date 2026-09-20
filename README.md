@@ -22,7 +22,7 @@ draw down together, and the correlation of their PnL is the quantity that
 governs the aggregate Sharpe ratio:
 
 ```math
-S_{\text{portfolio}} \;=\; S \sqrt{\frac{N}{1 + (N-1)\,\rho}}
+S_{\text{portfolio}} = S \sqrt{\frac{N}{1 + (N-1)\rho}}
 ```
 
 | $N$ | $S$ | $\rho$ | $S_{\text{portfolio}}$ |
@@ -103,7 +103,7 @@ Three ingestion paths, all producing the same `ReturnsPanel`.
 ### Any CSV or Parquet file
 
 One column per series, one row per bar. Non-numeric columns are dropped and
-reported; rows with missing values are removed on a complete-case basis and the
+reported  rows with missing values are removed on a complete-case basis and the
 count is printed, rather than being filled silently.
 
 ```bash
@@ -164,9 +164,9 @@ resulting proportions $p_{1,2} = (1 \pm \rho)/2$ into the effective bet count
 gives a closed form:
 
 ```math
-N_{\text{eff}} \;=\; \frac{1}{\sum_i p_i^{2}}
-\;=\; \frac{4}{(1+\rho)^{2} + (1-\rho)^{2}}
-\;=\; \frac{2}{1 + \rho^{2}}
+N_{\text{eff}} = \frac{1}{\sum_i p_i^{2}}
+= \frac{4}{(1+\rho)^{2} + (1-\rho)^{2}}
+= \frac{2}{1 + \rho^{2}}
 ```
 
 | $\rho$ | $\lambda_1$ | $\lambda_2$ | $N_{\text{eff}}$ |
@@ -196,7 +196,7 @@ C = \begin{bmatrix}
 \end{bmatrix}
 \qquad
 \begin{aligned}
-\lambda &= 2.7655,\; 1.7845,\; 0.15,\; 0.15,\; 0.15 \\
+\lambda &= 2.7655,  1.7845,  0.15,  0.15,  0.15 \\
 N_{\text{eff}} &= 2.2936
 \end{aligned}
 ```
@@ -211,7 +211,7 @@ by Cholesky factorisation and estimating from the sample alone:
 | $\lambda_2$ | 1.7845 | 1.7855 |
 | $\lambda_{3,4,5}$ | 0.1500 | 0.1622, 0.1564, 0.1443 |
 | $N_{\text{eff}}$ | 2.2936 | 2.3082 |
-| $\max_{ij} \lvert \hat{C}_{ij} - C_{ij} \rvert$ | — | 0.0132 |
+| Largest absolute error in $C$ | — | 0.0132 |
 
 The Marchenko-Pastur ceiling at $N = 5$, $T = 2000$ is $1.1025$, and exactly two
 eigenvalues clear it, matching the rank of the block construction. The three
@@ -237,7 +237,7 @@ All producers emit a single canonical structure, and all consumers read it:
 
 The panel carries `values`, `names`, `index`, `kind` and the annualisation
 factor. Frequency is resolved to periods per year at construction, so the
-annualisation convention is fixed once rather than at each call site; a custom
+annualisation convention is fixed once rather than at each call site  a custom
 calendar is supplied with `periods_per_year`.
 
 ```
@@ -281,7 +281,7 @@ With $R_c$ the column-centred return matrix:
 ```math
 S = \frac{R_c^{\top} R_c}{T - 1}
 \qquad
-C = D^{-1} S D^{-1}, \quad D = \operatorname{diag}(\sigma)
+C = D^{-1} S D^{-1}, \quad D = \mathrm{diag}(\sigma)
 ```
 
 Bessel's correction is applied because the mean is estimated from the same
@@ -292,7 +292,7 @@ eigenvalues from floating point asymmetry.
 Geometrically, each centred column is a vector in $\mathbb{R}^{T}$ and
 
 ```math
-\operatorname{corr}(a, b) = \frac{a \cdot b}{\lVert a \rVert \, \lVert b \rVert} = \cos\theta
+\mathrm{corr}(a, b) = \frac{a \cdot b}{\|a\|  \|b\|} = \cos\theta
 ```
 
 so zero correlation is orthogonality, and the search for uncorrelated strategies
@@ -302,10 +302,10 @@ is a search for mutually perpendicular return vectors.
 
 `C = V L V'` via `numpy.linalg.eigh`, which exploits symmetry and returns an
 orthonormal basis. Eigenvalues are sorted in descending order and validated to
-be non-negative beyond floating point tolerance; a genuinely indefinite input
+be non-negative beyond floating point tolerance  a genuinely indefinite input
 raises rather than being silently clipped.
 
-For a correlation matrix, $\sum_i \lambda_i = \operatorname{tr}(C) = N$. The
+For a correlation matrix, $\sum_i \lambda_i = \mathrm{tr}(C) = N$. The
 explained-variance proportions $p_i = \lambda_i / N$ describe how concentrated
 the panel's variance is along its principal directions.
 
@@ -331,7 +331,7 @@ the sample correlation matrix converge to the Marchenko-Pastur distribution,
 supported on
 
 ```math
-\lambda_{\pm} = \left(1 \pm \sqrt{\tfrac{N}{T}}\,\right)^{2}
+\lambda_{\pm} = \left(1 \pm \sqrt{\tfrac{N}{T}}\right)^{2}
 ```
 
 Eigenvalues below $\lambda_{+}$ are indistinguishable from sampling noise. This is
@@ -351,26 +351,26 @@ hand-entered prices. Every eigenvalue it produces sits beneath the noise floor.
 
 Pairwise correlations are reported with Fisher z-transformed confidence
 intervals. The sampling distribution of $r$ is skewed near the boundaries, while
-$\operatorname{arctanh}(r)$ is approximately normal with variance $1/(T-3)$:
+$\mathrm{arctanh}(r)$ is approximately normal with variance $1/(T-3)$:
 
 ```math
-\text{CI} = \tanh\!\left( \operatorname{arctanh}(r) \;\pm\; \frac{z_{1-\alpha/2}}{\sqrt{T - 3}} \right)
+\text{CI} = \tanh\left( \mathrm{arctanh}(r) \pm \frac{z_{1-\alpha/2}}{\sqrt{T - 3}} \right)
 ```
 
-At $r = 0.15$ and $T = 60$ the 95% interval is $[-0.11,\, +0.39]$.
+At $r = 0.15$ and $T = 60$ the 95% interval is $[-0.11, +0.39]$.
 
 Two standard errors are exposed, because they are routinely conflated:
 
 ```math
-\operatorname{SE}_{z}(T) = \frac{1}{\sqrt{T-3}}
+\mathrm{SE}_{z}(T) = \frac{1}{\sqrt{T-3}}
 \qquad
-\operatorname{SE}_{r}(r, T) = \frac{1 - r^{2}}{\sqrt{T-1}}
+\mathrm{SE}_{r}(r, T) = \frac{1 - r^{2}}{\sqrt{T-1}}
 ```
 
 exposed as `fisher_z_stderr(T)` and `correlation_stderr(r, T)` respectively.
 
 Reporting a correlation of $0.15000$ from sixty observations without an interval
-is false precision; the estimate is consistent with anything from mild negative
+is false precision  the estimate is consistent with anything from mild negative
 dependence to a materially concentrated book.
 
 ### Time variation and stress
@@ -401,8 +401,8 @@ plausible number. The suite is organised accordingly:
 
 | Class | Approach |
 |---|---|
-| Known-answer | Cholesky generator produces returns with a specified correlation matrix; the estimator must recover it |
-| Identities | $\sum_i \lambda_i = \operatorname{tr}(C)$, $Cv = \lambda v$, orthonormal eigenvectors, $\operatorname{corr} = \cos\theta$ |
+| Known-answer | Cholesky generator produces returns with a specified correlation matrix  the estimator must recover it |
+| Identities | $\sum_i \lambda_i = \mathrm{tr}(C)$, $Cv = \lambda v$, orthonormal eigenvectors, $\mathrm{corr} = \cos\theta$ |
 | Invariance | Correlation unchanged under rescaling and translation of any column |
 | Degenerate | Duplicated series correlate at exactly 1, mirrored at exactly -1, constant series rejected |
 | Rejection | NaN, misaligned indices, unknown frequencies, indefinite matrices, oversized windows |
@@ -422,14 +422,14 @@ should be treated as undetermined. Bouchaud and Potters (2011) survey the correc
 
 **The estimator is unshrunk.** For $T/N$ near unity the sample covariance matrix
 is poorly conditioned. Ledoit-Wolf shrinkage is the standard remedy and is not
-yet implemented; the report flags the ratio instead.
+yet implemented  the report flags the ratio instead.
 
 **Correlation measures linear dependence.** Series can be strongly dependent and
 measure near zero under a non-monotonic relationship. A low reading is evidence
 against a linear relationship only.
 
 **Rolling windows overlap**, so successive readings are autocorrelated. The
-reported range is informative; the standard deviation of the rolling series is
+reported range is informative  the standard deviation of the rolling series is
 not a valid independent-sample statistic.
 
 **The stress window is small by construction.** A 10% tail of 1,200 observations
@@ -440,7 +440,7 @@ Epps (1979) effect. Correlation structure should be estimated on daily bars even
 when signals are generated intraday.
 
 **Every quantity here is an in-sample description.** It constrains position
-sizing; it does not forecast.
+sizing  it does not forecast.
 
 ---
 
