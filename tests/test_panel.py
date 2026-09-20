@@ -1,19 +1,11 @@
-"""Tests del formato canonico.
-
-El panel es la pieza de la que cuelga todo el sistema. Si acepta datos
-invalidos en silencio, todos los numeros de aguas abajo son basura sin
-que nadie se entere. Por eso la mayoria de estos tests verifican que
-RECHAZA cosas, no que las acepta.
-"""
-
 import numpy as np
 import pytest
 
-from quantlab.core.panel import PERIODOS_POR_ANIO, ReturnsPanel
+from quantlab.core.panel import PERIODS_PER_YEAR, ReturnsPanel
 
 
 @pytest.fixture
-def panel_simple():
+def panel():
     rng = np.random.default_rng(42)
     return ReturnsPanel(
         values=rng.normal(size=(100, 3)),
@@ -22,170 +14,137 @@ def panel_simple():
     )
 
 
-# ----------------------------------------------------------------------
-# Construccion valida
-# ----------------------------------------------------------------------
+def test_basic_construction(panel):
+    assert panel.T == 100
+    assert panel.N == 3
+    assert panel.names == ("EURUSD", "GBPUSD", "GOLD")
+    assert panel.kind == "returns"
 
 
-def test_construccion_basica(panel_simple):
-    assert panel_simple.T == 100
-    assert panel_simple.N == 3
-    assert panel_simple.names == ("EURUSD", "GBPUSD", "GOLD")
-    assert panel_simple.kind == "returns"
+def test_values_are_cast_to_float():
+    assert ReturnsPanel(values=[[1, 2], [3, 4]], names=("A", "B")).values.dtype == np.float64
 
 
-def test_values_se_convierte_a_float():
-    panel = ReturnsPanel(values=[[1, 2], [3, 4]], names=("A", "B"))
-    assert panel.values.dtype == np.float64
-
-
-def test_panel_es_inmutable(panel_simple):
+def test_panel_is_immutable(panel):
     with pytest.raises(Exception):
-        panel_simple.freq = "1h"
+        panel.freq = "1h"
 
 
-# ----------------------------------------------------------------------
-# Validacion: lo que tiene que rechazar
-# ----------------------------------------------------------------------
-
-
-def test_rechaza_array_1d():
+def test_rejects_1d_array():
     with pytest.raises(ValueError, match="2D"):
         ReturnsPanel(values=np.zeros(10), names=("A",))
 
 
-def test_rechaza_menos_de_dos_observaciones():
-    with pytest.raises(ValueError, match="al menos 2 observaciones"):
+def test_rejects_single_observation():
+    with pytest.raises(ValueError, match="at least 2 observations"):
         ReturnsPanel(values=np.zeros((1, 2)), names=("A", "B"))
 
 
-def test_rechaza_nombres_desalineados():
-    with pytest.raises(ValueError, match="nombres pero values"):
+def test_rejects_misaligned_names():
+    with pytest.raises(ValueError, match="entries but values"):
         ReturnsPanel(values=np.zeros((10, 3)), names=("A", "B"))
 
 
-def test_rechaza_nombres_duplicados():
-    with pytest.raises(ValueError, match="duplicados"):
+def test_rejects_duplicate_names():
+    with pytest.raises(ValueError, match="duplicate names"):
         ReturnsPanel(values=np.zeros((10, 2)), names=("A", "A"))
 
 
-def test_rechaza_freq_desconocida():
-    with pytest.raises(ValueError, match="desconocida"):
+def test_rejects_unknown_freq():
+    with pytest.raises(ValueError, match="unknown freq"):
         ReturnsPanel(values=np.zeros((10, 2)), names=("A", "B"), freq="3s")
 
 
-def test_rechaza_kind_invalido():
-    with pytest.raises(ValueError, match="kind debe ser"):
-        ReturnsPanel(values=np.zeros((10, 2)), names=("A", "B"), kind="precios")
+def test_rejects_invalid_kind():
+    with pytest.raises(ValueError, match="kind must be"):
+        ReturnsPanel(values=np.zeros((10, 2)), names=("A", "B"), kind="prices")
 
 
-def test_rechaza_nan():
+def test_rejects_nan():
     values = np.zeros((10, 2))
     values[3, 1] = np.nan
-    with pytest.raises(ValueError, match="no finitos"):
+    with pytest.raises(ValueError, match="non-finite"):
         ReturnsPanel(values=values, names=("A", "B"))
 
 
-def test_rechaza_inf():
+def test_rejects_inf():
     values = np.zeros((10, 2))
     values[0, 0] = np.inf
-    with pytest.raises(ValueError, match="no finitos"):
+    with pytest.raises(ValueError, match="non-finite"):
         ReturnsPanel(values=values, names=("A", "B"))
 
 
-def test_rechaza_index_de_largo_incorrecto():
-    with pytest.raises(ValueError, match="index tiene largo"):
-        ReturnsPanel(
-            values=np.zeros((10, 2)), names=("A", "B"), index=np.arange(5)
-        )
+def test_rejects_misaligned_index():
+    with pytest.raises(ValueError, match="index has length"):
+        ReturnsPanel(values=np.zeros((10, 2)), names=("A", "B"), index=np.arange(5))
 
 
-# ----------------------------------------------------------------------
-# Anualizacion
-# ----------------------------------------------------------------------
+def test_daily_annualization_factor(panel):
+    assert panel.periods_per_year == 252
 
 
-def test_periodos_por_anio_diario(panel_simple):
-    assert panel_simple.periodos_por_anio == 252
+def test_m15_annualization_factor():
+    assert ReturnsPanel(np.zeros((10, 1)), ("A",), freq="15m").periods_per_year == 252 * 96
 
 
-def test_periodos_por_anio_m15():
-    panel = ReturnsPanel(values=np.zeros((10, 1)), names=("A",), freq="15m")
-    assert panel.periodos_por_anio == 252 * 96
+def test_annualization_factors_are_monotonic():
+    order = ["1mo", "1w", "1d", "4h", "1h", "30m", "15m", "5m", "1m"]
+    factors = [PERIODS_PER_YEAR[f] for f in order]
+    assert factors == sorted(factors)
 
 
-def test_factores_de_anualizacion_son_monotonos():
-    """Mas granular -> mas periodos por año. Un orden roto aqui produce
-    Sharpes inflados sin lanzar ninguna excepcion."""
-    orden = ["1mo", "1w", "1d", "4h", "1h", "30m", "15m", "5m", "1m"]
-    factores = [PERIODOS_POR_ANIO[f] for f in orden]
-    assert factores == sorted(factores)
+def test_observation_ratio(panel):
+    assert panel.observation_ratio == pytest.approx(100 / 3)
 
 
-def test_ratio_observaciones(panel_simple):
-    assert panel_simple.ratio_observaciones == pytest.approx(100 / 3)
+def test_select_filters_and_reorders(panel):
+    subset = panel.select(["GOLD", "EURUSD"])
+    assert subset.names == ("GOLD", "EURUSD")
+    assert np.allclose(subset.values[:, 0], panel.column("GOLD"))
+    assert np.allclose(subset.values[:, 1], panel.column("EURUSD"))
 
 
-# ----------------------------------------------------------------------
-# Operaciones
-# ----------------------------------------------------------------------
+def test_select_preserves_metadata(panel):
+    subset = panel.select(["GOLD"])
+    assert subset.freq == panel.freq
+    assert subset.kind == panel.kind
 
 
-def test_select_reordena_y_filtra(panel_simple):
-    sub = panel_simple.select(["GOLD", "EURUSD"])
-    assert sub.names == ("GOLD", "EURUSD")
-    assert sub.N == 2
-    assert np.allclose(sub.values[:, 0], panel_simple.column("GOLD"))
-    assert np.allclose(sub.values[:, 1], panel_simple.column("EURUSD"))
+def test_select_rejects_unknown_column(panel):
+    with pytest.raises(KeyError, match="not found"):
+        panel.select(["EURUSD", "BITCOIN"])
 
 
-def test_select_preserva_metadata(panel_simple):
-    sub = panel_simple.select(["GOLD"])
-    assert sub.freq == panel_simple.freq
-    assert sub.kind == panel_simple.kind
-
-
-def test_select_rechaza_columna_inexistente(panel_simple):
-    with pytest.raises(KeyError, match="no encontradas"):
-        panel_simple.select(["EURUSD", "BITCOIN"])
-
-
-def test_slice_rows(panel_simple):
+def test_slice_rows(panel):
     mask = np.zeros(100, dtype=bool)
     mask[:10] = True
-    sub = panel_simple.slice_rows(mask)
-    assert sub.T == 10
-    assert sub.N == 3
-    assert np.allclose(sub.values, panel_simple.values[:10])
+    subset = panel.slice_rows(mask)
+    assert subset.T == 10
+    assert np.allclose(subset.values, panel.values[:10])
 
 
-def test_slice_rows_recorta_index():
-    index = np.arange(10)
-    panel = ReturnsPanel(
-        values=np.zeros((10, 2)), names=("A", "B"), index=index
-    )
-    mask = np.array([True, False] * 5)
-    sub = panel.slice_rows(mask)
-    assert sub.T == 5
-    assert np.array_equal(sub.index, np.array([0, 2, 4, 6, 8]))
+def test_slice_rows_trims_index():
+    p = ReturnsPanel(values=np.zeros((10, 2)), names=("A", "B"), index=np.arange(10))
+    subset = p.slice_rows(np.array([True, False] * 5))
+    assert np.array_equal(subset.index, np.array([0, 2, 4, 6, 8]))
 
 
-def test_slice_rows_rechaza_mask_mal_formada(panel_simple):
-    with pytest.raises(ValueError, match="mask debe tener forma"):
-        panel_simple.slice_rows(np.ones(5, dtype=bool))
+def test_slice_rows_rejects_wrong_mask(panel):
+    with pytest.raises(ValueError, match="mask must have shape"):
+        panel.slice_rows(np.ones(5, dtype=bool))
 
 
-def test_column_por_nombre(panel_simple):
-    assert np.allclose(panel_simple.column("GBPUSD"), panel_simple.values[:, 1])
+def test_column_lookup(panel):
+    assert np.allclose(panel.column("GBPUSD"), panel.values[:, 1])
 
 
-def test_column_rechaza_nombre_inexistente(panel_simple):
-    with pytest.raises(KeyError, match="no existe"):
-        panel_simple.column("PLATA")
+def test_column_rejects_unknown_name(panel):
+    with pytest.raises(KeyError, match="does not exist"):
+        panel.column("SILVER")
 
 
-def test_no_muta_el_panel_original(panel_simple):
-    original = panel_simple.values.copy()
-    panel_simple.select(["GOLD"])
-    panel_simple.slice_rows(np.ones(100, dtype=bool))
-    assert np.allclose(panel_simple.values, original)
+def test_operations_do_not_mutate_source(panel):
+    original = panel.values.copy()
+    panel.select(["GOLD"])
+    panel.slice_rows(np.ones(100, dtype=bool))
+    assert np.allclose(panel.values, original)
