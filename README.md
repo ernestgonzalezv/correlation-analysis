@@ -21,15 +21,17 @@ share an underlying signal family — several trend-following variants, say — 
 draw down together, and the correlation of their PnL is the quantity that
 governs the aggregate Sharpe ratio:
 
-```
-S_portfolio = S * sqrt( N / (1 + (N - 1) * rho) )
-
-  N = 5,  S = 1.0,  rho = 0.30  ->  1.51
-  N = 5,  S = 1.0,  rho = 0.10  ->  1.89
-  N = 10, S = 1.0,  rho = 0.10  ->  2.29
+```math
+S_{\text{portfolio}} \;=\; S \sqrt{\frac{N}{1 + (N-1)\,\rho}}
 ```
 
-The binding constraint in that expression is `rho`, not `N`. This package
+| $N$ | $S$ | $\rho$ | $S_{\text{portfolio}}$ |
+|---|---|---|---|
+| 5 | 1.0 | 0.30 | 1.51 |
+| 5 | 1.0 | 0.10 | 1.89 |
+| 10 | 1.0 | 0.10 | 2.29 |
+
+The binding constraint in that expression is $\rho$, not $N$. This package
 measures `rho`, decomposes where it comes from, and reports how much of the
 estimate survives a noise filter.
 
@@ -153,63 +155,65 @@ quantity has a value it is required to reproduce.
 
 For two series the correlation matrix is
 
-```
-C = [ 1    rho ]
-    [ rho  1   ]
-```
-
-whose eigenvalues are exactly `1 + rho` and `1 - rho`. Substituting the
-resulting proportions `p = (1 +- rho) / 2` into the effective bet count gives a
-closed form:
-
-```
-              1                4                   2
-N_eff = ------------- = ------------------- = -----------
-         sum( p_i^2 )   (1+rho)^2 + (1-rho)^2   1 + rho^2
+```math
+C = \begin{bmatrix} 1 & \rho \\ \rho & 1 \end{bmatrix}
 ```
 
-```
-   rho      lambda_1   lambda_2     N_eff
-  0.00       1.0000     1.0000     2.0000
-  0.25       1.2500     0.7500     1.8824
-  0.50       1.5000     0.5000     1.6000
-  0.75       1.7500     0.2500     1.2800
-  0.90       1.9000     0.1000     1.1050
-  0.99       1.9900     0.0100     1.0100
+whose eigenvalues are exactly $\lambda_{1,2} = 1 \pm \rho$. Substituting the
+resulting proportions $p_{1,2} = (1 \pm \rho)/2$ into the effective bet count
+gives a closed form:
+
+```math
+N_{\text{eff}} \;=\; \frac{1}{\sum_i p_i^{2}}
+\;=\; \frac{4}{(1+\rho)^{2} + (1-\rho)^{2}}
+\;=\; \frac{2}{1 + \rho^{2}}
 ```
 
-Two series are worth two bets only at `rho = 0`, and the count degrades
-quadratically rather than linearly: at `rho = 0.5` the panel still carries 1.60
-independent bets, while at `rho = 0.9` it carries 1.11.
+| $\rho$ | $\lambda_1$ | $\lambda_2$ | $N_{\text{eff}}$ |
+|---|---|---|---|
+| 0.00 | 1.0000 | 1.0000 | 2.0000 |
+| 0.25 | 1.2500 | 0.7500 | 1.8824 |
+| 0.50 | 1.5000 | 0.5000 | 1.6000 |
+| 0.75 | 1.7500 | 0.2500 | 1.2800 |
+| 0.90 | 1.9000 | 0.1000 | 1.1050 |
+| 0.99 | 1.9900 | 0.0100 | 1.0100 |
+
+Two series are worth two bets only at $\rho = 0$, and the count degrades
+quadratically rather than linearly: at $\rho = 0.5$ the panel still carries
+1.60 independent bets, while at $\rho = 0.9$ it carries 1.11.
 
 ### Recovery of a block structure at N = 5
 
 Take a target with two blocks, correlation `0.85` within and `0.10` across:
 
+```math
+C = \begin{bmatrix}
+1.00 & 0.85 & 0.85 & 0.10 & 0.10 \\
+0.85 & 1.00 & 0.85 & 0.10 & 0.10 \\
+0.85 & 0.85 & 1.00 & 0.10 & 0.10 \\
+0.10 & 0.10 & 0.10 & 1.00 & 0.85 \\
+0.10 & 0.10 & 0.10 & 0.85 & 1.00
+\end{bmatrix}
+\qquad
+\begin{aligned}
+\lambda &= 2.7655,\; 1.7845,\; 0.15,\; 0.15,\; 0.15 \\
+N_{\text{eff}} &= 2.2936
+\end{aligned}
 ```
-C = [ 1.00  0.85  0.85  0.10  0.10 ]
-    [ 0.85  1.00  0.85  0.10  0.10 ]
-    [ 0.85  0.85  1.00  0.10  0.10 ]
-    [ 0.10  0.10  0.10  1.00  0.85 ]
-    [ 0.10  0.10  0.10  0.85  1.00 ]
 
-exact eigenvalues   2.7655  1.7845  0.1500  0.1500  0.1500
-exact N_eff         2.2936
-```
-
-The three repeated eigenvalues at `1 - 0.85 = 0.15` are the degenerate
+The three repeated eigenvalues at $1 - 0.85 = 0.15$ are the degenerate
 directions inside the blocks. Sampling `T = 2000` observations from this matrix
 by Cholesky factorisation and estimating from the sample alone:
 
-| Quantity | Exact | Estimated from T = 2000 |
+| Quantity | Exact | Estimated from $T = 2000$ |
 |---|---|---|
-| `lambda_1` | 2.7655 | 2.7516 |
-| `lambda_2` | 1.7845 | 1.7855 |
-| `lambda_3..5` | 0.1500 | 0.1622, 0.1564, 0.1443 |
-| `N_eff` | 2.2936 | 2.3082 |
-| Largest absolute error in `C` | — | 0.0132 |
+| $\lambda_1$ | 2.7655 | 2.7516 |
+| $\lambda_2$ | 1.7845 | 1.7855 |
+| $\lambda_{3,4,5}$ | 0.1500 | 0.1622, 0.1564, 0.1443 |
+| $N_{\text{eff}}$ | 2.2936 | 2.3082 |
+| $\max_{ij} \lvert \hat{C}_{ij} - C_{ij} \rvert$ | — | 0.0132 |
 
-The Marchenko-Pastur ceiling at `N = 5`, `T = 2000` is `1.1025`, and exactly two
+The Marchenko-Pastur ceiling at $N = 5$, $T = 2000$ is $1.1025$, and exactly two
 eigenvalues clear it, matching the rank of the block construction. The three
 noise eigenvalues sit two orders of magnitude below the ceiling and are
 correctly discarded.
@@ -265,18 +269,19 @@ instrument returns and on strategy PnL without modification.
 
 ### Returns
 
-Prices are converted to log returns, `r_t = ln(P_t / P_{t-1})`. Correlating
+Prices are converted to log returns, $r_t = \ln(P_t / P_{t-1})$. Correlating
 price levels produces spurious results because two trending series correlate
 through their common drift. Log returns are additive across time, which makes
 aggregation and annualisation exact rather than approximate.
 
 ### Covariance and correlation
 
-With `Rc` the column-centred return matrix:
+With $R_c$ the column-centred return matrix:
 
-```
-S = Rc' Rc / (T - 1)
-C = D^-1 S D^-1,      D = diag(sigma)
+```math
+S = \frac{R_c^{\top} R_c}{T - 1}
+\qquad
+C = D^{-1} S D^{-1}, \quad D = \operatorname{diag}(\sigma)
 ```
 
 Bessel's correction is applied because the mean is estimated from the same
@@ -284,10 +289,10 @@ sample. The correlation matrix is symmetrised and its diagonal set exactly to
 unity, so that downstream eigen-decomposition does not encounter small negative
 eigenvalues from floating point asymmetry.
 
-Geometrically, each centred column is a vector in `R^T` and
+Geometrically, each centred column is a vector in $\mathbb{R}^{T}$ and
 
-```
-corr(a, b) = (a . b) / (|a| |b|) = cos(theta)
+```math
+\operatorname{corr}(a, b) = \frac{a \cdot b}{\lVert a \rVert \, \lVert b \rVert} = \cos\theta
 ```
 
 so zero correlation is orthogonality, and the search for uncorrelated strategies
@@ -300,18 +305,22 @@ orthonormal basis. Eigenvalues are sorted in descending order and validated to
 be non-negative beyond floating point tolerance; a genuinely indefinite input
 raises rather than being silently clipped.
 
-For a correlation matrix, `sum(lambda_i) = trace(C) = N`. The explained-variance
-proportions `p_i = lambda_i / N` describe how concentrated the panel's variance
-is along its principal directions.
+For a correlation matrix, $\sum_i \lambda_i = \operatorname{tr}(C) = N$. The
+explained-variance proportions $p_i = \lambda_i / N$ describe how concentrated
+the panel's variance is along its principal directions.
+
+```math
+C = V \Lambda V^{\top}, \qquad \lambda_1 \geq \lambda_2 \geq \dots \geq \lambda_N \geq 0
+```
 
 ### Effective number of bets
 
-```
-N_eff = 1 / sum(p_i^2)
+```math
+N_{\text{eff}} = \frac{1}{\sum_{i=1}^{N} p_i^{2}}, \qquad 1 \leq N_{\text{eff}} \leq N
 ```
 
 The inverse Herfindahl index of the explained-variance distribution. It equals
-`N` when all eigenvalues are equal, and 1 when a single factor explains the
+$N$ when all eigenvalues are equal, and $1$ when a single factor explains the
 entire panel. Meucci (2009) develops an entropy-based variant of the same
 construction.
 
@@ -321,19 +330,19 @@ For `T` independent observations of `N` uncorrelated series, the eigenvalues of
 the sample correlation matrix converge to the Marchenko-Pastur distribution,
 supported on
 
-```
-lambda_+- = (1 +- sqrt(N / T))^2
+```math
+\lambda_{\pm} = \left(1 \pm \sqrt{\tfrac{N}{T}}\,\right)^{2}
 ```
 
-Eigenvalues below `lambda_+` are indistinguishable from sampling noise. This is
+Eigenvalues below $\lambda_{+}$ are indistinguishable from sampling noise. This is
 the filter applied in Laloux et al. (1999) and Plerou et al. (2002) to financial
 correlation matrices, where the typical finding is that only a small number of
 eigenvalues carry information.
 
-```
-N = 8,  T = 500  ->  lambda_+ = 1.269
-N = 3,  T = 4    ->  lambda_+ = 3.478, exceeding the total eigenvalue mass of 3
-```
+| $N$ | $T$ | $\lambda_{+}$ | Note |
+|---|---|---|---|
+| 8 | 500 | 1.269 | eigenvalues above this carry information |
+| 3 | 4 | 3.478 | exceeds the total eigenvalue mass of 3 |
 
 The second case is the common tutorial configuration of a handful of
 hand-entered prices. Every eigenvalue it produces sits beneath the noise floor.
@@ -341,23 +350,26 @@ hand-entered prices. Every eigenvalue it produces sits beneath the noise floor.
 ### Interval estimation
 
 Pairwise correlations are reported with Fisher z-transformed confidence
-intervals. The sampling distribution of `r` is skewed near the boundaries, while
-`arctanh(r)` is approximately normal with variance `1 / (T - 3)`:
+intervals. The sampling distribution of $r$ is skewed near the boundaries, while
+$\operatorname{arctanh}(r)$ is approximately normal with variance $1/(T-3)$:
 
+```math
+\text{CI} = \tanh\!\left( \operatorname{arctanh}(r) \;\pm\; \frac{z_{1-\alpha/2}}{\sqrt{T - 3}} \right)
 ```
-CI = tanh( arctanh(r)  +-  z_(1-a/2) / sqrt(T - 3) )
 
-r = 0.15, T = 60   ->  95% CI  [-0.11, +0.39]
-```
+At $r = 0.15$ and $T = 60$ the 95% interval is $[-0.11,\, +0.39]$.
 
 Two standard errors are exposed, because they are routinely conflated:
 
-```
-fisher_z_stderr(T)        = 1 / sqrt(T - 3)           scale of arctanh(r)
-correlation_stderr(r, T)  = (1 - r^2) / sqrt(T - 1)   scale of r
+```math
+\operatorname{SE}_{z}(T) = \frac{1}{\sqrt{T-3}}
+\qquad
+\operatorname{SE}_{r}(r, T) = \frac{1 - r^{2}}{\sqrt{T-1}}
 ```
 
-Reporting a correlation of `0.15000` from sixty observations without an interval
+exposed as `fisher_z_stderr(T)` and `correlation_stderr(r, T)` respectively.
+
+Reporting a correlation of $0.15000$ from sixty observations without an interval
 is false precision; the estimate is consistent with anything from mild negative
 dependence to a materially concentrated book.
 
@@ -370,7 +382,7 @@ that the largest-scale series does not determine which observations count as
 adverse. The lift between the two is the quantity of interest: diversification
 that disappears under stress was never risk reduction.
 
-The rolling statistic is computed from running sums in `O(T N^2)` rather than by
+The rolling statistic is computed from running sums in $O(T N^{2})$ rather than by
 re-estimating a correlation matrix per window, which keeps intraday sample sizes
 tractable. The test suite pins the vectorised implementation against a naive
 per-window reference.
@@ -390,12 +402,12 @@ plausible number. The suite is organised accordingly:
 | Class | Approach |
 |---|---|
 | Known-answer | Cholesky generator produces returns with a specified correlation matrix; the estimator must recover it |
-| Identities | `sum(lambda) = trace`, `Cv = lambda v`, orthonormal eigenvectors, `corr = cos(theta)` |
+| Identities | $\sum_i \lambda_i = \operatorname{tr}(C)$, $Cv = \lambda v$, orthonormal eigenvectors, $\operatorname{corr} = \cos\theta$ |
 | Invariance | Correlation unchanged under rescaling and translation of any column |
 | Degenerate | Duplicated series correlate at exactly 1, mirrored at exactly -1, constant series rejected |
 | Rejection | NaN, misaligned indices, unknown frequencies, indefinite matrices, oversized windows |
 | Coverage | The nominal 95% interval contains the true parameter in at least 85% of repeated trials |
-| Equivalence | The vectorised rolling estimator matches a naive reference to 1e-10 |
+| Equivalence | The vectorised rolling estimator matches a naive reference to $10^{-10}$ |
 
 ---
 
@@ -405,10 +417,10 @@ These are properties of the method rather than deferred work.
 
 **The Marchenko-Pastur bound assumes i.i.d. observations.** Financial returns are
 heavy-tailed and exhibit volatility clustering, so the empirical noise band is
-wider than the asymptotic bound. An eigenvalue marginally above `lambda_+` should
-be treated as undetermined. Bouchaud and Potters (2011) survey the corrections.
+wider than the asymptotic bound. An eigenvalue marginally above $\lambda_{+}$
+should be treated as undetermined. Bouchaud and Potters (2011) survey the corrections.
 
-**The estimator is unshrunk.** For `T/N` near unity the sample covariance matrix
+**The estimator is unshrunk.** For $T/N$ near unity the sample covariance matrix
 is poorly conditioned. Ledoit-Wolf shrinkage is the standard remedy and is not
 yet implemented; the report flags the ratio instead.
 
