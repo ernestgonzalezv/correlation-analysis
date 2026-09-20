@@ -16,3 +16,7 @@ data/processed/
 
 # sistema
 .DS_Store
+
+# IDEs
+.idea/
+.vscode/

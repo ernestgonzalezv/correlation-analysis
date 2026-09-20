@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eigenrisk.core.panel import PERIODS_PER_YEAR, ReturnsPanel
+from correlation_analysis.core.panel import PERIODS_PER_YEAR, ReturnsPanel
 
 
 @pytest.fixture

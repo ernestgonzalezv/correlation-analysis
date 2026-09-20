@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from eigenrisk.core.covariance import correlation_matrix
-from eigenrisk.core.noise import (
+from correlation_analysis.core.covariance import correlation_matrix
+from correlation_analysis.core.noise import (
     correlation_interval,
     correlation_stderr,
     fisher_z_stderr,
@@ -11,8 +11,8 @@ from eigenrisk.core.noise import (
     marchenko_pastur_bounds,
     signal_mask,
 )
-from eigenrisk.core.spectral import decompose
-from eigenrisk.data.synthetic import (
+from correlation_analysis.core.spectral import decompose
+from correlation_analysis.data.synthetic import (
     equicorrelation_matrix,
     independent_panel,
     synthetic_panel,

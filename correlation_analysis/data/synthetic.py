@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from eigenrisk.core.panel import ReturnsPanel
+from correlation_analysis.core.panel import ReturnsPanel
 
 
 def equicorrelation_matrix(n_series: int, rho: float) -> np.ndarray:

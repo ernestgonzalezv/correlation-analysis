@@ -1,14 +1,14 @@
 import numpy as np
 import pytest
 
-from eigenrisk.core.covariance import (
+from correlation_analysis.core.covariance import (
     center,
     correlation_matrix,
     covariance_matrix,
     volatilities,
 )
-from eigenrisk.core.panel import ReturnsPanel
-from eigenrisk.data.synthetic import equicorrelation_matrix, synthetic_panel
+from correlation_analysis.core.panel import ReturnsPanel
+from correlation_analysis.data.synthetic import equicorrelation_matrix, synthetic_panel
 
 
 @pytest.fixture

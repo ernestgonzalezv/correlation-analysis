@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from eigenrisk.core.covariance import VARIANCE_TOLERANCE, correlation_matrix
-from eigenrisk.core.panel import ReturnsPanel
+from correlation_analysis.core.covariance import VARIANCE_TOLERANCE, correlation_matrix
+from correlation_analysis.core.panel import ReturnsPanel
 
 MIN_WINDOW = 4
 

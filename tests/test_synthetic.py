@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from eigenrisk.core.covariance import correlation_matrix
-from eigenrisk.data.synthetic import (
+from correlation_analysis.core.covariance import correlation_matrix
+from correlation_analysis.data.synthetic import (
     block_correlation_matrix,
     correlated_returns,
     equicorrelation_matrix,

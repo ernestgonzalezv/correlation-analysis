@@ -1,16 +1,16 @@
 import numpy as np
 import pytest
 
-from eigenrisk.core.covariance import correlation_matrix
-from eigenrisk.core.panel import ReturnsPanel
-from eigenrisk.core.rolling import (
+from correlation_analysis.core.covariance import correlation_matrix
+from correlation_analysis.core.panel import ReturnsPanel
+from correlation_analysis.core.rolling import (
     correlation_lift_under_stress,
     mean_pairwise_correlation,
     rolling_mean_correlation,
     stress_correlation,
     stress_mask,
 )
-from eigenrisk.data.synthetic import equicorrelation_matrix, synthetic_panel
+from correlation_analysis.data.synthetic import equicorrelation_matrix, synthetic_panel
 
 
 @pytest.fixture

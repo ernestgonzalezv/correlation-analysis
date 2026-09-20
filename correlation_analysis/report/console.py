@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from eigenrisk.research.diversification import DiversificationReport
+from correlation_analysis.research.diversification import DiversificationReport
 
 WIDTH = 78
 NAME_WIDTH = 12
