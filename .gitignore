@@ -1,0 +1,18 @@
+# entorno
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# datos (no versionar, se regeneran)
+data/raw/
+data/processed/
+*.parquet
+*.csv
+
+# notebooks
+.ipynb_checkpoints/
+
+# sistema
+.DS_Store
