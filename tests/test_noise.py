@@ -5,11 +5,12 @@ from correlation_analysis.core.covariance import correlation_matrix
 from correlation_analysis.core.noise import (
     correlation_interval,
     correlation_stderr,
-    fisher_z_stderr,
     count_signal_factors,
+    fisher_z_stderr,
     is_estimate_reliable,
     marchenko_pastur_bounds,
     signal_mask,
+    two_sided_z_score,
 )
 from correlation_analysis.core.spectral import decompose
 from correlation_analysis.data.synthetic import (
@@ -66,7 +67,8 @@ def test_signal_mask_flags_the_dominant_factor():
 
 
 def test_stderr_shrinks_with_sample_size():
-    assert correlation_stderr(np.array(0.5), 1_000) < correlation_stderr(np.array(0.5), 50)
+    r = np.array(0.5)
+    assert correlation_stderr(r, 1_000) < correlation_stderr(r, 50)
 
 
 def test_stderr_depends_on_the_correlation_value():
@@ -141,9 +143,32 @@ def test_interval_covers_true_correlation():
     assert covered >= int(0.85 * trials)
 
 
-def test_interval_rejects_unsupported_level():
-    with pytest.raises(ValueError, match="unsupported confidence level"):
-        correlation_interval(np.array(0.5), n_obs=100, level=0.77)
+def test_interval_accepts_any_level_in_the_open_unit_interval():
+    low, high = correlation_interval(np.array(0.5), n_obs=100, level=0.77)
+    assert low < 0.5 < high
+
+
+def test_interval_rejects_a_level_outside_the_unit_interval():
+    with pytest.raises(ValueError, match="must lie in"):
+        correlation_interval(np.array(0.5), n_obs=100, level=1.0)
+
+
+def test_z_score_matches_textbook_values():
+    assert two_sided_z_score(0.95) == pytest.approx(1.959964, abs=1e-6)
+    assert two_sided_z_score(0.99) == pytest.approx(2.575829, abs=1e-6)
+    assert two_sided_z_score(0.90) == pytest.approx(1.644854, abs=1e-6)
+
+
+def test_z_score_increases_with_confidence():
+    levels = [0.80, 0.90, 0.95, 0.99, 0.999]
+    scores = [two_sided_z_score(level) for level in levels]
+    assert scores == sorted(scores)
+
+
+def test_z_score_rejects_degenerate_levels():
+    for level in (0.0, 1.0, -0.5, 2.0):
+        with pytest.raises(ValueError, match="must lie in"):
+            two_sided_z_score(level)
 
 
 def test_higher_confidence_gives_wider_interval():

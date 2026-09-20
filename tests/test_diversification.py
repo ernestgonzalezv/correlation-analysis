@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from correlation_analysis import analyze, panel_from_pnl
+from correlation_analysis import AnalysisConfig, analyze, panel_from_pnl
 from correlation_analysis.core.panel import ReturnsPanel
 from correlation_analysis.data.synthetic import (
     block_correlation_matrix,
@@ -72,7 +72,7 @@ def test_short_sample_is_flagged_unreliable():
     panel = synthetic_panel(equicorrelation_matrix(8, rho=0.3), n_obs=40, seed=43)
     report = analyze(panel)
     assert not report.estimate_is_reliable
-    assert any("dominated by noise" in w for w in report.warnings)
+    assert any("estimation error dominates" in w for w in report.warnings)
 
 
 def test_noise_bounds_are_skipped_when_series_outnumber_observations():
@@ -106,7 +106,8 @@ def test_rolling_window_is_chosen_automatically(report):
 
 def test_explicit_rolling_window_is_respected():
     panel = synthetic_panel(equicorrelation_matrix(3, rho=0.4), n_obs=600, seed=46)
-    assert analyze(panel, window=90).rolling.window == 90
+    config = AnalysisConfig(rolling_window=90)
+    assert analyze(panel, config).rolling.window == 90
 
 
 def test_stress_section_is_populated(report):
@@ -171,7 +172,7 @@ def test_render_handles_a_report_without_warnings():
 
 def test_skips_are_reported_not_swallowed():
     panel = synthetic_panel(equicorrelation_matrix(4, rho=0.3), n_obs=25, seed=51)
-    report = analyze(panel, stress_quantile=0.05)
+    report = analyze(panel, AnalysisConfig(stress_quantile=0.05))
 
     assert report.stress_correlation is None
     assert report.stress_skipped is not None
@@ -180,7 +181,7 @@ def test_skips_are_reported_not_swallowed():
 
 def test_skip_reason_reaches_the_rendered_report():
     panel = synthetic_panel(equicorrelation_matrix(4, rho=0.3), n_obs=25, seed=52)
-    text = render(analyze(panel, stress_quantile=0.05))
+    text = render(analyze(panel, AnalysisConfig(stress_quantile=0.05)))
     assert "skipped:" in text
 
 
@@ -195,6 +196,89 @@ def test_marchenko_pastur_caveat_is_shown(report):
 
 def test_volatility_units_follow_the_panel_kind():
     rng = np.random.default_rng(53)
-    pnl = panel_from_pnl(rng.normal(loc=10.0, scale=200.0, size=(600, 3)), ["A", "B", "C"])
+    values = rng.normal(loc=10.0, scale=200.0, size=(600, 3))
+    pnl = panel_from_pnl(values, ["A", "B", "C"])
     assert "CURRENCY UNITS" in render(analyze(pnl))
     assert "RETURN UNITS" in render(analyze(independent_panel(600, 3, seed=54)))
+
+
+def test_config_defaults_are_used_when_none_is_given():
+    report = analyze(independent_panel(n_obs=600, n_series=3, seed=60))
+    assert report.config == AnalysisConfig()
+
+
+def test_concentration_threshold_is_configurable():
+    panel = synthetic_panel(equicorrelation_matrix(4, rho=0.2), n_obs=2_000, seed=61)
+
+    lenient = analyze(panel, AnalysisConfig(concentration_threshold=0.10))
+    strict = analyze(panel, AnalysisConfig(concentration_threshold=0.99))
+
+    assert not any("independent bets" in w for w in lenient.warnings)
+    assert any("independent bets" in w for w in strict.warnings)
+
+
+def test_stress_lift_threshold_is_configurable():
+    rng = np.random.default_rng(62)
+    calm = rng.normal(scale=0.01, size=(600, 3))
+    shock = rng.normal(scale=0.01, size=(60, 1)) - 0.04
+    crash = np.repeat(shock, 3, axis=1) + rng.normal(scale=0.002, size=(60, 3))
+    panel = ReturnsPanel(np.vstack([calm, crash]), ("A", "B", "C"))
+
+    silent = analyze(panel, AnalysisConfig(stress_lift_threshold=0.99))
+    loud = analyze(panel, AnalysisConfig(stress_lift_threshold=0.01))
+
+    assert not any("worst days" in w for w in silent.warnings)
+    assert any("worst days" in w for w in loud.warnings)
+
+
+def test_reliability_ratio_is_configurable():
+    panel = synthetic_panel(equicorrelation_matrix(3, rho=0.3), n_obs=60, seed=63)
+
+    assert analyze(panel, AnalysisConfig(min_observation_ratio=5.0)).estimate_is_reliable
+    assert not analyze(
+        panel, AnalysisConfig(min_observation_ratio=50.0)
+    ).estimate_is_reliable
+
+
+def test_window_divisor_drives_automatic_window_selection():
+    panel = synthetic_panel(equicorrelation_matrix(3, rho=0.3), n_obs=1_200, seed=64)
+
+    assert analyze(panel, AnalysisConfig(window_divisor=6)).rolling.window == 200
+    assert analyze(panel, AnalysisConfig(window_divisor=4)).rolling.window == 300
+
+
+def test_confidence_level_widens_the_reported_interval():
+    panel = synthetic_panel(equicorrelation_matrix(3, rho=0.4), n_obs=500, seed=65)
+
+    narrow = analyze(panel, AnalysisConfig(confidence_level=0.80))
+    wide = analyze(panel, AnalysisConfig(confidence_level=0.99))
+
+    narrow_span = narrow.correlation_high[0, 1] - narrow.correlation_low[0, 1]
+    wide_span = wide.correlation_high[0, 1] - wide.correlation_low[0, 1]
+    assert wide_span > narrow_span
+
+
+def test_config_rejects_a_degenerate_window_divisor():
+    with pytest.raises(ValueError, match="window_divisor must be at least 1"):
+        AnalysisConfig(window_divisor=0)
+
+
+def test_config_rejects_a_tiny_rolling_window():
+    with pytest.raises(ValueError, match="rolling_window must be at least"):
+        AnalysisConfig(rolling_window=2)
+
+
+def test_config_rejects_an_out_of_range_concentration_threshold():
+    with pytest.raises(ValueError, match="concentration_threshold must lie"):
+        AnalysisConfig(concentration_threshold=1.5)
+
+
+def test_config_rejects_a_non_positive_observation_ratio():
+    with pytest.raises(ValueError, match="min_observation_ratio must be positive"):
+        AnalysisConfig(min_observation_ratio=0.0)
+
+
+def test_console_width_is_configurable(report):
+    narrow = render(report, width=50, name_width=10)
+    assert all(len(line) <= 60 for line in narrow.splitlines() if line.startswith("="))
+    assert "=" * 50 in narrow

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -50,6 +50,7 @@ def panel_from_prices(
     freq: str = "1d",
     index: np.ndarray | None = None,
     method: str = "log",
+    periods_per_year: float | None = None,
 ) -> ReturnsPanel:
     if method == "log":
         values = log_returns(prices)
@@ -66,6 +67,7 @@ def panel_from_prices(
         freq=freq,
         kind="returns",
         index=aligned_index,
+        periods_per_year=periods_per_year,
     )
 
 
@@ -74,6 +76,7 @@ def panel_from_pnl(
     names: Sequence[str],
     freq: str = "1d",
     index: np.ndarray | None = None,
+    periods_per_year: float | None = None,
 ) -> ReturnsPanel:
     return ReturnsPanel(
         values=np.asarray(pnl, dtype=float),
@@ -81,4 +84,5 @@ def panel_from_pnl(
         freq=freq,
         kind="pnl",
         index=None if index is None else np.asarray(index),
+        periods_per_year=periods_per_year,
     )

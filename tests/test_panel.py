@@ -1,3 +1,5 @@
+from dataclasses import FrozenInstanceError
+
 import numpy as np
 import pytest
 
@@ -22,11 +24,12 @@ def test_basic_construction(panel):
 
 
 def test_values_are_cast_to_float():
-    assert ReturnsPanel(values=[[1, 2], [3, 4]], names=("A", "B")).values.dtype == np.float64
+    panel = ReturnsPanel(values=[[1, 2], [3, 4]], names=("A", "B"))
+    assert panel.values.dtype == np.float64
 
 
 def test_panel_is_immutable(panel):
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         panel.freq = "1h"
 
 
@@ -84,7 +87,8 @@ def test_daily_annualization_factor(panel):
 
 
 def test_m15_annualization_factor():
-    assert ReturnsPanel(np.zeros((10, 1)), ("A",), freq="15m").periods_per_year == 252 * 96
+    panel = ReturnsPanel(np.zeros((10, 1)), ("A",), freq="15m")
+    assert panel.periods_per_year == 252 * 96
 
 
 def test_annualization_factors_are_monotonic():
@@ -148,3 +152,39 @@ def test_operations_do_not_mutate_source(panel):
     panel.select(["GOLD"])
     panel.slice_rows(np.ones(100, dtype=bool))
     assert np.allclose(panel.values, original)
+
+
+def test_calendar_is_derived_from_named_constants():
+    from correlation_analysis.core.panel import (
+        MINUTES_PER_TRADING_DAY,
+        TRADING_DAYS_PER_YEAR,
+    )
+
+    assert PERIODS_PER_YEAR["1m"] == TRADING_DAYS_PER_YEAR * MINUTES_PER_TRADING_DAY
+    hourly = TRADING_DAYS_PER_YEAR * MINUTES_PER_TRADING_DAY / 60
+    assert PERIODS_PER_YEAR["1h"] == hourly
+    assert PERIODS_PER_YEAR["1d"] == TRADING_DAYS_PER_YEAR
+
+
+def test_custom_calendar_overrides_the_lookup():
+    panel = ReturnsPanel(
+        np.zeros((10, 1)), ("BTC",), freq="1d", periods_per_year=365.0
+    )
+    assert panel.periods_per_year == 365.0
+
+
+def test_custom_calendar_allows_an_unlisted_freq_label():
+    panel = ReturnsPanel(
+        np.zeros((10, 1)), ("A",), freq="8h", periods_per_year=1095.0
+    )
+    assert panel.periods_per_year == 1095.0
+
+
+def test_custom_calendar_must_be_positive():
+    with pytest.raises(ValueError, match="periods_per_year must be positive"):
+        ReturnsPanel(np.zeros((10, 1)), ("A",), periods_per_year=0.0)
+
+
+def test_unlisted_freq_without_override_is_rejected():
+    with pytest.raises(ValueError, match="unknown freq"):
+        ReturnsPanel(np.zeros((10, 1)), ("A",), freq="8h")
