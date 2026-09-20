@@ -32,7 +32,7 @@ S_{\text{portfolio}} \;=\; S \sqrt{\frac{N}{1 + (N-1)\,\rho}}
 | 10 | 1.0 | 0.10 | 2.29 |
 
 The binding constraint in that expression is $\rho$, not $N$. This package
-measures `rho`, decomposes where it comes from, and reports how much of the
+measures $\rho$, decomposes where it comes from, and reports how much of the
 estimate survives a noise filter.
 
 ---
@@ -184,7 +184,7 @@ quadratically rather than linearly: at $\rho = 0.5$ the panel still carries
 
 ### Recovery of a block structure at N = 5
 
-Take a target with two blocks, correlation `0.85` within and `0.10` across:
+Take a target with two blocks, correlation $0.85$ within and $0.10$ across:
 
 ```math
 C = \begin{bmatrix}
@@ -202,7 +202,7 @@ N_{\text{eff}} &= 2.2936
 ```
 
 The three repeated eigenvalues at $1 - 0.85 = 0.15$ are the degenerate
-directions inside the blocks. Sampling `T = 2000` observations from this matrix
+directions inside the blocks. Sampling $T = 2000$ observations from this matrix
 by Cholesky factorisation and estimating from the sample alone:
 
 | Quantity | Exact | Estimated from $T = 2000$ |
