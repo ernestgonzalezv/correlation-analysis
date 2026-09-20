@@ -146,37 +146,76 @@ below the reliability threshold.
 
 ## Worked example
 
-Eight instruments, daily bars, 2018 to 2026:
+A panel is constructed with a known factor structure, so every reported
+quantity has a value it is required to reproduce.
+
+### Closed form at N = 2
+
+For two series the correlation matrix is
 
 ```
-CORRELATION
-                EURUSD    GBPUSD    USDJPY    USDCHF    AUDUSD    USDCAD    XAUUSD    XAGUSD
-EURUSD           1.000     0.704    -0.475    -0.767     0.629    -0.516     0.386     0.328
-USDCHF          -0.767    -0.558     0.578     1.000    -0.486     0.404    -0.414    -0.299
-AUDUSD           0.629     0.657    -0.331    -0.486     1.000    -0.713     0.427     0.449
-XAUUSD           0.386     0.352    -0.365    -0.414     0.427    -0.307     1.000     0.770
-
-FACTOR STRUCTURE
-factor        eigenvalue   explained   cumulative       verdict
-1                 4.2875      53.6%        53.6%        signal
-2                 1.1960      15.0%        68.5%        signal
-3                 1.0118      12.6%        81.2%         noise
-
-Marchenko-Pastur noise ceiling   1.1264
-
-DIVERSIFICATION
-series held              8
-effective bets           2.998
-diversification ratio    37.5%
-
-WARNINGS
-- 8 series behave like 3.00 independent bets; exposure is more
-  concentrated than the position count suggests
+C = [ 1    rho ]
+    [ rho  1   ]
 ```
 
-Two factors carry the panel: a dollar factor and a precious-metals factor.
-Gold and silver at 0.770, and the commodity currencies at -0.713 across
-opposite quote conventions, are the same exposure entered twice.
+whose eigenvalues are exactly `1 + rho` and `1 - rho`. Substituting the
+resulting proportions `p = (1 +- rho) / 2` into the effective bet count gives a
+closed form:
+
+```
+              1                4                   2
+N_eff = ------------- = ------------------- = -----------
+         sum( p_i^2 )   (1+rho)^2 + (1-rho)^2   1 + rho^2
+```
+
+```
+   rho      lambda_1   lambda_2     N_eff
+  0.00       1.0000     1.0000     2.0000
+  0.25       1.2500     0.7500     1.8824
+  0.50       1.5000     0.5000     1.6000
+  0.75       1.7500     0.2500     1.2800
+  0.90       1.9000     0.1000     1.1050
+  0.99       1.9900     0.0100     1.0100
+```
+
+Two series are worth two bets only at `rho = 0`, and the count degrades
+quadratically rather than linearly: at `rho = 0.5` the panel still carries 1.60
+independent bets, while at `rho = 0.9` it carries 1.11.
+
+### Recovery of a block structure at N = 5
+
+Take a target with two blocks, correlation `0.85` within and `0.10` across:
+
+```
+C = [ 1.00  0.85  0.85  0.10  0.10 ]
+    [ 0.85  1.00  0.85  0.10  0.10 ]
+    [ 0.85  0.85  1.00  0.10  0.10 ]
+    [ 0.10  0.10  0.10  1.00  0.85 ]
+    [ 0.10  0.10  0.10  0.85  1.00 ]
+
+exact eigenvalues   2.7655  1.7845  0.1500  0.1500  0.1500
+exact N_eff         2.2936
+```
+
+The three repeated eigenvalues at `1 - 0.85 = 0.15` are the degenerate
+directions inside the blocks. Sampling `T = 2000` observations from this matrix
+by Cholesky factorisation and estimating from the sample alone:
+
+| Quantity | Exact | Estimated from T = 2000 |
+|---|---|---|
+| `lambda_1` | 2.7655 | 2.7516 |
+| `lambda_2` | 1.7845 | 1.7855 |
+| `lambda_3..5` | 0.1500 | 0.1622, 0.1564, 0.1443 |
+| `N_eff` | 2.2936 | 2.3082 |
+| Largest absolute error in `C` | — | 0.0132 |
+
+The Marchenko-Pastur ceiling at `N = 5`, `T = 2000` is `1.1025`, and exactly two
+eigenvalues clear it, matching the rank of the block construction. The three
+noise eigenvalues sit two orders of magnitude below the ceiling and are
+correctly discarded.
+
+This is the test the suite runs: a structure is specified, data is generated
+from it, and the estimator must return the structure it was given.
 
 ---
 
@@ -407,47 +446,3 @@ core/
   timeseries.py     ARMA/GARCH, Ornstein-Uhlenbeck
   sizing.py         Kelly, volatility targeting, risk budgeting
 ```
-
----
-
-## References
-
-Bouchaud, J.-P. and Potters, M. (2011). *Financial applications of random matrix
-theory: a short review.* In The Oxford Handbook of Random Matrix Theory.
-
-Epps, T. W. (1979). *Comovements in stock prices in the very short run.* Journal
-of the American Statistical Association 74, 291-298.
-
-Fisher, R. A. (1921). *On the probable error of a coefficient of correlation
-deduced from a small sample.* Metron 1, 3-32.
-
-Laloux, L., Cizeau, P., Bouchaud, J.-P. and Potters, M. (1999). *Noise dressing
-of financial correlation matrices.* Physical Review Letters 83, 1467-1470.
-
-Ledoit, O. and Wolf, M. (2004). *A well-conditioned estimator for
-large-dimensional covariance matrices.* Journal of Multivariate Analysis 88,
-365-411.
-
-Marchenko, V. A. and Pastur, L. A. (1967). *Distribution of eigenvalues for some
-sets of random matrices.* Matematicheskii Sbornik 72, 507-536.
-
-Meucci, A. (2009). *Managing diversification.* Risk 22(5), 74-79.
-
-Plerou, V., Gopikrishnan, P., Rosenow, B., Amaral, L. A. N., Guhr, T. and
-Stanley, H. E. (2002). *Random matrix approach to cross correlations in
-financial data.* Physical Review E 65, 066126.
-
----
-
-## License
-
-MIT. See `LICENSE`.
-
----
-
-## Development
-
-GitFlow. `main` carries tagged releases, `develop` is the integration branch,
-work happens on `feature/*` and merges back with `--no-ff`.
-
-CI runs `ruff` and `pytest` against Python 3.11, 3.12 and 3.13.
